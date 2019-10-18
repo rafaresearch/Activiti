@@ -16,6 +16,21 @@
 
 package org.activiti.runtime.api.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.MockitoAnnotations.initMocks;
+
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+
 import org.activiti.api.runtime.shared.NotFoundException;
 import org.activiti.api.runtime.shared.identity.UserGroupManager;
 import org.activiti.api.runtime.shared.security.SecurityManager;
@@ -29,17 +44,6 @@ import org.activiti.runtime.api.model.impl.APITaskConverter;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
-
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
-import static org.mockito.MockitoAnnotations.initMocks;
 
 public class TaskRuntimeHelperTest {
 
@@ -58,6 +62,9 @@ public class TaskRuntimeHelperTest {
 
     @Mock
     private APITaskConverter taskConverter;
+    
+    @Mock
+    private VariableNameValidator variableNameValidator;
 
     @Before
     public void setUp() {
@@ -65,7 +72,8 @@ public class TaskRuntimeHelperTest {
         taskRuntimeHelper = spy(new TaskRuntimeHelper(taskService,
                 taskConverter,
                 securityManager,
-                userGroupManager));
+                userGroupManager,
+                variableNameValidator));
         when(securityManager.getAuthenticatedUserId()).thenReturn(AUTHENTICATED_USER);
     }
 

@@ -1,5 +1,10 @@
 package org.activiti.runtime.api.impl;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
 import org.activiti.api.runtime.shared.NotFoundException;
 import org.activiti.api.runtime.shared.identity.UserGroupManager;
 import org.activiti.api.runtime.shared.security.SecurityManager;
@@ -11,24 +16,23 @@ import org.activiti.engine.TaskService;
 import org.activiti.engine.impl.persistence.entity.VariableInstance;
 import org.activiti.runtime.api.model.impl.APITaskConverter;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-
 public class TaskRuntimeHelper {
     private final TaskService taskService;
     private final SecurityManager securityManager;
     private final UserGroupManager userGroupManager;
     private final APITaskConverter taskConverter;
+    private final VariableNameValidator variableNameValidator;
 
     public TaskRuntimeHelper(TaskService taskService,
                              APITaskConverter taskConverter,
                              SecurityManager securityManager,
-                             UserGroupManager userGroupManager) {
+                             UserGroupManager userGroupManager,
+                             VariableNameValidator variableNameValidator) {
         this.taskService = taskService;
         this.securityManager = securityManager;
         this.userGroupManager = userGroupManager;
         this.taskConverter = taskConverter;
+        this.variableNameValidator = variableNameValidator;
     }
 
     public Task applyUpdateTaskPayload(boolean isAdmin, UpdateTaskPayload updateTaskPayload) {
@@ -206,15 +210,17 @@ public class TaskRuntimeHelper {
         if (!isAdmin) {
             assertCanModifyTask(getInternalTask(createTaskVariablePayload.getTaskId()));
         }
+        
+        String name = createTaskVariablePayload.getName();
 
-        if (createTaskVariablePayload.getName() == null || createTaskVariablePayload.getName().isEmpty()) {
-            throw new IllegalStateException("You cannot create a variable without name");
+        if (!variableNameValidator.validate(name)) {
+            throw new IllegalStateException("Variable has not a valid name: " + (name != null ? name : "null" ));
         }
-
+        
         assertVariableDoesNotExist(createTaskVariablePayload);
 
         taskService.setVariableLocal(createTaskVariablePayload.getTaskId(),
-                createTaskVariablePayload.getName(),
+                name,
                 createTaskVariablePayload.getValue());
     }
 
@@ -232,17 +238,29 @@ public class TaskRuntimeHelper {
             assertCanModifyTask(getInternalTask(updateTaskVariablePayload.getTaskId()));
         }
 
-        if (updateTaskVariablePayload.getName() == null || updateTaskVariablePayload.getName().isEmpty()) {
-            throw new IllegalStateException("You cannot update a variable without name");
+        String name = updateTaskVariablePayload.getName();
+        
+        if (!variableNameValidator.validate(name)) {
+            throw new IllegalStateException("You cannot update a variable with not a valid name: " + (name != null ? name : "null" ));
         }
-
+  
         assertVariableExists(updateTaskVariablePayload);
 
         taskService.setVariableLocal(updateTaskVariablePayload.getTaskId(),
-                updateTaskVariablePayload.getName(),
+                name,
                 updateTaskVariablePayload.getValue());
     }
-
+    
+    public void validateVariableNames(Map<String, Object> variables) {
+         
+        Set<String> wrongVariableNames = variableNameValidator.validateVariables(variables);
+        if (!wrongVariableNames.isEmpty()) {
+            throw new IllegalStateException("Variables have not valid names: " + String.join(", ",
+                                                                                         wrongVariableNames));
+        }
+        
+    }
+    
     private void assertVariableExists(UpdateTaskVariablePayload updateTaskVariablePayload) {
         Map<String, VariableInstance> variables = taskService.getVariableInstancesLocal(updateTaskVariablePayload.getTaskId());
 
